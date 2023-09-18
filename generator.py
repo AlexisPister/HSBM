@@ -56,20 +56,23 @@ def name_generator():
 
 
 class Generator:
-    def __init__(self, n_nodes: int = 100, p_edge_intra: float = 0.20, p_edge_inter: float = 0.02, community_array: list[int] or None = None):
+    def __init__(self, n_nodes: int = 100, n_coms=None, p_edge_intra: float = 0.20, p_edge_inter: float = 0.02, community_array: list[int] or None = None, sampling_strat="weighted"):
         self.n_nodes = n_nodes
+        self.n_coms = n_coms
+        if not self.n_coms:
+            self.n_com = int(n_nodes / 30)
+
         self.p_edge_intra = p_edge_intra
         self.p_edge_inter = p_edge_inter
         self.community_array = community_array
+        self.sampling_start = sampling_strat
         self.counter = 0
 
         self.node_type = "node"
         self.hyperedge_type = "hyperedge"
 
         if not self.community_array:
-            # n_com = int(n_nodes / 30)
-            n_com = 5
-            self.community_array = [random.randint(0, n_com - 1) for i in range(n_nodes)]
+            self.community_array = [random.randint(0, self.n_coms - 1) for i in range(n_nodes)]
 
     def init_graph(self):
         self.G = nx.Graph()
@@ -106,8 +109,12 @@ class Generator:
         return hyperedge
 
     def add_node_in_hyperedge(self, node, hyperedge):
-        # self.add_node_firstproba(node, hyperedge)
-        self.add_weighted_proba(node, hyperedge)
+        if self.sampling_start == "first":
+            self.add_node_firstproba(node, hyperedge)
+        elif self.sampling_start == "weighted":
+            self.add_weighted_proba(node, hyperedge)
+        elif self.sampling_start == "max":
+            self.add_node_maxproba(node, hyperedge)
 
     def add_node_firstproba(self, node, hyperedge):
         com1 = self.community_array[node]
@@ -127,27 +134,22 @@ class Generator:
             p = self.p_edge_intra if com == com2 else self.p_edge_inter
             sum_p += p
         weighted_proba = sum_p / len(hyperedge)
-        print(weighted_proba)
         roll = random.random()
         if roll < weighted_proba:
             hyperedge.append(node)
 
+    def add_node_maxproba(self, node, hyperedge):
+        def most_frequent(List):
+            return max(set(List), key=List.count)
 
-    # def run_fixed_proba(self, node, hyperedge, nodes):
-    #     hyperedge_created = False
-    #     for i, node2 in enumerate(nodes):
-    #         if node != node2:
-    #             com1 = self.community_array[node]
-    #             com2 = self.community_array[node2]
-    #
-    #             p = self.p_edge_intra if com1 == com2 else self.p_edge_inter
-    #             roll = random.random()
-    #             if roll < p:
-    #                 self.G.add_edge(hyperedge, "p" + str(node2))
-    #                 hyperedge_created = True
-    #
-    #     return hyperedge_created
+        com = self.community_array[node]
+        current_coms = [self.community_array[n] for n in hyperedge]
+        most_frequent_com = most_frequent(current_coms)
 
+        p = self.p_edge_intra if com == most_frequent_com else self.p_edge_inter
+        roll = random.random()
+        if roll < p:
+            hyperedge.append(node)
 
     def run_fixed_size(self, node, hyperedge, nodes):
         hyperedge_created = False
@@ -207,7 +209,7 @@ class Generator:
         return graph_json
 
     def export(self):
-        fp = f"hypergraphs/{self.n_nodes}nodes.json"
+        fp = f"hypergraphs/{self.n_nodes}nodes_{self.sampling_start}.json"
         with open(fp, "w+") as path:
             json.dump(self.to_json(), path)
 
@@ -215,6 +217,20 @@ class Generator:
             json.dump(self.to_json(), path)
 
 
-gen = Generator()
-gen.run()
-gen.export()
+sampling_strats = ["first", "weighted", "max"]
+sizes = [60, 100, 300]
+n_coms = [4, 6, 20]
+
+for strat in sampling_strats:
+    for size, n_com in zip(sizes, n_coms):
+        print(size, n_com)
+        gen = Generator(size, n_com, 0.20, 0.02, None, strat)
+        gen.run()
+        gen.export()
+
+
+
+#
+# gen = Generator()
+# gen.run()
+# gen.export()
