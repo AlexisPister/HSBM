@@ -56,7 +56,7 @@ def name_generator():
 
 
 class Generator:
-    def __init__(self, n_nodes: int = 50, p_edge_intra: float = 0.20, p_edge_inter: float = 0.02, community_array: list[int] or None = None):
+    def __init__(self, n_nodes: int = 100, p_edge_intra: float = 0.20, p_edge_inter: float = 0.02, community_array: list[int] or None = None):
         self.n_nodes = n_nodes
         self.p_edge_intra = p_edge_intra
         self.p_edge_inter = p_edge_inter
@@ -68,7 +68,7 @@ class Generator:
 
         if not self.community_array:
             # n_com = int(n_nodes / 30)
-            n_com = 4
+            n_com = 5
             self.community_array = [random.randint(0, n_com - 1) for i in range(n_nodes)]
 
     def init_graph(self):
@@ -88,33 +88,50 @@ class Generator:
 
             nodes = list(range(self.n_nodes))
             random.shuffle(nodes)
-            # print(nodes)
 
             hyperedge = [node]
-
-            hyperedge = self.create_hyperedge()
-            hyperedge_created = self.run_fixed_proba(node, hyperedge, nodes)
+            self.run_fixed_proba(node, hyperedge, nodes)
             # hyperedge_created = self.run_fixed_size(node, hyperedge, nodes)
 
-            if hyperedge_created:
-                self.G.add_edge(hyperedge, "p" + str(node))
-            else:
-                self.G.remove_node(hyperedge)
+            if len(hyperedge) > 1:
+                hid = self.create_hyperedge()
+                self.G.add_edge(hid, "p" + str(node))
+                for n in hyperedge:
+                    self.G.add_edge(hid, "p" + str(n))
 
     def run_fixed_proba(self, node, hyperedge, nodes):
-        hyperedge_created = False
         for i, node2 in enumerate(nodes):
             if node != node2:
-                com1 = self.community_array[node]
-                com2 = self.community_array[node2]
+                self.add_node_in_hyperedge(node2, hyperedge)
+        return hyperedge
 
-                p = self.p_edge_intra if com1 == com2 else self.p_edge_inter
-                roll = random.random()
-                if roll < p:
-                    self.G.add_edge(hyperedge, "p" + str(node2))
-                    hyperedge_created = True
+    def add_node_in_hyperedge(self, node, hyperedge):
+        # self.add_node_firstproba(node, hyperedge)
+        self.add_weighted_proba(node, hyperedge)
 
-        return hyperedge_created
+    def add_node_firstproba(self, node, hyperedge):
+        com1 = self.community_array[node]
+        com2 = self.community_array[hyperedge[0]]
+
+        p = self.p_edge_intra if com1 == com2 else self.p_edge_inter
+        roll = random.random()
+        if roll < p:
+            hyperedge.append(node)
+
+    def add_weighted_proba(self, node, hyperedge):
+        com = self.community_array[node]
+
+        sum_p = 0
+        for n in hyperedge:
+            com2 = self.community_array[n]
+            p = self.p_edge_intra if com == com2 else self.p_edge_inter
+            sum_p += p
+        weighted_proba = sum_p / len(hyperedge)
+        print(weighted_proba)
+        roll = random.random()
+        if roll < weighted_proba:
+            hyperedge.append(node)
+
 
     # def run_fixed_proba(self, node, hyperedge, nodes):
     #     hyperedge_created = False
@@ -152,13 +169,10 @@ class Generator:
 
         return hyperedge_created
 
-
-
     def create_hyperedge(self):
         hyperedge = "h" + str(self.counter)
         self.counter += 1
         self.G.add_node(hyperedge, type=self.hyperedge_type)
-
         return hyperedge
 
     def new_name(self):
