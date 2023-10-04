@@ -2,7 +2,6 @@ import numpy as np
 import networkx as nx
 import random
 import json
-from collections import defaultdict
 
 # This version has as parameters the number of nodes but also the number of hyperedges, so when p = q, we go back to the simple hypergraph random model
 
@@ -95,14 +94,14 @@ class Generator:
         self.init_graph()
 
         for hedge in range(self.n_hedges):
+
             nodes = list(range(self.n_nodes))
             random.shuffle(nodes)
 
             hyperedge = []
+
             for node in nodes:
                 # self.run_fixed_proba(node, hyperedge, nodes)
-
-                # TODO: check if a node can be the start of several hyperedges
                 if len(hyperedge) == 0:
                     hyperedge.append(node)
                     continue
@@ -110,8 +109,15 @@ class Generator:
                 self.add_node_in_hyperedge(node, hyperedge)
 
             hid = self.create_hyperedge()
+            self.G.add_edge(hid, "p" + str(node))
             for n in hyperedge:
                 self.G.add_edge(hid, "p" + str(n))
+
+    def run_fixed_proba(self, node, hyperedge, nodes):
+        for i, node2 in enumerate(nodes):
+            if node != node2:
+                self.add_node_in_hyperedge(node2, hyperedge)
+        return hyperedge
 
     def add_node_in_hyperedge(self, node, hyperedge):
         if self.sampling_start == "first":
@@ -182,48 +188,6 @@ class Generator:
         self.G.add_node(hyperedge, type=self.hyperedge_type)
         return hyperedge
 
-    def degrees(self):
-        nodes =  [node for node, attr in self.G.nodes(data=True) if attr["type"] == self.node_type]
-        degrees = self.G.degree(nodes)
-        return degrees
-
-    def hyperedge_sizes(self):
-        hedges =  [node for node, attr in self.G.nodes(data=True) if attr["type"] == self.hyperedge_type]
-        degrees = self.G.degree(hedges)
-        return degrees
-
-    def hyperedges_composition(self):
-        hedges_comp = []
-        for hedge in [node for node, attr in self.G.nodes(data=True) if attr["type"] == self.hyperedge_type]:
-            nodes = self.G[hedge]
-            coms = [self.G.nodes[n]["community"] for n in nodes]
-            hedges_comp.append(coms)
-        return hedges_comp
-
-    def mixed_he_fraction_to_count(self):
-        edges_composition = self.hyperedges_composition()
-        fraction_to_count = defaultdict(int)
-        for he in edges_composition:
-            n0 = he.count(0)
-            fraction = round((n0 / len(he)) * 100, 3)
-            fraction_to_count[fraction] += 1
-        return fraction_to_count
-
-
-
-    def hyperedges_types(self):
-        hedges_comp = []
-        for hedge in [node for node, attr in self.G.nodes(data=True) if attr["type"] == self.hyperedge_type]:
-            nodes = self.G[hedge]
-            coms = [self.G.nodes[n]["community"] for n in nodes]
-            coms_set = set(coms)
-            if len(coms_set) == 1:
-                hedges_comp.append("pure")
-            else:
-                hedges_comp.append("mixed")
-        return hedges_comp
-
-
     def new_name(self):
         name = name_generator()
         if name in dict(self.G.nodes(data="name")).values():
@@ -263,24 +227,22 @@ class Generator:
         with open("output.json", "w+") as path:
             json.dump(self.to_json(), path)
 
-if __name__ == "__main__":
-    RUN_SIM = False
 
-    if RUN_SIM:
-        sampling_strats = ["weighted", "max"]
-        sizes = [60, 80, 100]
-        # n_hedges = [60, 100, 300]
-        n_coms = [2, 4, 6]
+sampling_strats = ["weighted", "max"]
+sizes = [60, 80, 100]
+# n_hedges = [60, 100, 300]
+n_coms = [2, 4, 6]
 
-        for strat in sampling_strats:
-            for size, n_com in zip(sizes, n_coms):
-                print(size, n_com)
-                gen = Generator(size, size, n_com, 0.20, 0.02, None, strat)
-                gen.run()
-                gen.export()
+for strat in sampling_strats:
+    for size, n_com in zip(sizes, n_coms):
+        print(size, n_com)
+        gen = Generator(size, size, n_com, 0.20, 0.02, None, strat)
+        gen.run()
+        gen.export()
 
-    gen = Generator(500, 300, 2, 0.20, 0, None, "weighted")
-    gen.run()
-    types = gen.hyperedges_types()
-    print(types)
-    print(gen.G)
+
+
+#
+# gen = Generator()
+# gen.run()
+# gen.export()
