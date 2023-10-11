@@ -2,7 +2,7 @@ import numpy as np
 import networkx as nx
 import random
 import json
-from collections import defaultdict
+from collections import defaultdict, Counter
 
 # This version has as parameters the number of nodes but also the number of hyperedges, so when p = q, we go back to the simple hypergraph random model
 
@@ -200,6 +200,20 @@ class Generator:
             hedges_comp.append(coms)
         return hedges_comp
 
+    # (max(n1, n2) / n1 + n2)
+    def hyperedges_nmax(self):
+        values = []
+        for hedge in [node for node, attr in self.G.nodes(data=True) if attr["type"] == self.hyperedge_type]:
+            nodes = self.G[hedge]
+            coms = [self.G.nodes[n]["community"] for n in nodes]
+            maxOccurrence = max(coms, key=coms.count)
+            count = Counter(coms)
+            maxCount = count[maxOccurrence]
+
+            value = maxCount / len(coms)
+            values.append(value)
+        return values
+
     def mixed_he_fraction_to_count(self):
         edges_composition = self.hyperedges_composition()
         fraction_to_count = defaultdict(int)
@@ -279,8 +293,12 @@ if __name__ == "__main__":
                 gen.run()
                 gen.export()
 
-    gen = Generator(500, 300, 2, 0.20, 0, None, "weighted")
+    gen = Generator(500, 300, 2, 0.20, 0.05, None, "weighted")
     gen.run()
-    types = gen.hyperedges_types()
-    print(types)
-    print(gen.G)
+    # types = gen.hyperedges_types()
+    # print(types)
+    # print(gen.G)
+
+    nmax = gen.hyperedges_nmax()
+    print(nmax)
+
