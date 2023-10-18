@@ -103,9 +103,11 @@ class Generator:
                 # self.run_fixed_proba(node, hyperedge, nodes)
 
                 # TODO: check if a node can be the start of several hyperedges
-                if len(hyperedge) == 0:
-                    hyperedge.append(node)
-                    continue
+                
+                # S1: add first node 
+                # if len(hyperedge) == 0:
+                #     hyperedge.append(node)
+                #     continue
 
                 self.add_node_in_hyperedge(node, hyperedge)
 
@@ -114,6 +116,13 @@ class Generator:
                 self.G.add_edge(hid, "p" + str(n))
 
     def add_node_in_hyperedge(self, node, hyperedge):
+        if len(hyperedge) == 0:
+            proba = self.p_edge_intra
+            roll = random.random()
+            if roll < proba:
+                hyperedge.append(node)
+            return
+        
         if self.sampling_start == "first":
             self.add_node_firstproba(node, hyperedge)
         elif self.sampling_start == "weighted":
@@ -139,6 +148,8 @@ class Generator:
             p = self.p_edge_intra if com == com2 else self.p_edge_inter
             sum_p += p
         weighted_proba = sum_p / len(hyperedge)
+        
+        
         roll = random.random()
         if roll < weighted_proba:
             hyperedge.append(node)
@@ -196,6 +207,9 @@ class Generator:
         hedges_comp = []
         for hedge in [node for node, attr in self.G.nodes(data=True) if attr["type"] == self.hyperedge_type]:
             nodes = self.G[hedge]
+            if len(nodes) == 0:
+                continue
+            
             coms = [self.G.nodes[n]["community"] for n in nodes]
             hedges_comp.append(coms)
         return hedges_comp
@@ -205,6 +219,11 @@ class Generator:
         values = []
         for hedge in [node for node, attr in self.G.nodes(data=True) if attr["type"] == self.hyperedge_type]:
             nodes = self.G[hedge]
+            
+#             TODO: for now, remove empty hes
+            if len(nodes) == 0:
+                continue 
+            
             coms = [self.G.nodes[n]["community"] for n in nodes]
             maxOccurrence = max(coms, key=coms.count)
             count = Counter(coms)
