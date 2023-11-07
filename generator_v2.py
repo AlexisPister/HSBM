@@ -1,4 +1,3 @@
-import numpy as np
 import networkx as nx
 import random
 import json
@@ -66,7 +65,7 @@ class Generator:
         self.n_hedges = n_hedges if n_hedges else self.n_nodes
         self.n_coms = n_coms
         if not self.n_coms:
-            self.n_com = int(n_nodes / 30)
+            self.n_coms = int(n_nodes / 30)
 
         self.p_edge_intra = p_edge_intra
         self.p_edge_inter = p_edge_inter
@@ -233,6 +232,76 @@ class Generator:
             values.append(value)
         return values
 
+
+    def ginis(self):
+        ginis = []
+        for hedge in [node for node, attr in self.G.nodes(data=True) if attr["type"] == self.hyperedge_type]:
+            nodes = self.G[hedge]
+            
+#             TODO: for now, remove empty hes
+            if len(nodes) == 0:
+                continue 
+            
+            coms = [self.G.nodes[n]["community"] for n in nodes]
+            count = Counter(coms)
+
+            for i in range(self.n_coms):
+                if not count[i]:
+                    count[i] = 0
+
+            # print(count)
+
+            gini = 0
+            for i, (n_com, count_value) in enumerate(count.items()):
+                for j, (n_com2, count_value2) in enumerate(count.items()):
+                    # if j > i:
+                        gini += abs(count_value - count_value2)
+
+            xbar = 0
+            for nc in count.values():
+                xbar += nc / self.n_coms
+                # xbar += nc / len(nodes)
+
+            # gini = gini / ((self.n_coms ** 2) * xbar)
+            # gini_norm = gini / ((self.n_coms - 1) / self.n_coms)
+
+            gini = gini / (2 * (self.n_coms ** 2) * xbar)
+            gini_norm = gini / (1 - 1/self.n_coms)
+
+            ginis.append(gini_norm)
+            # ginis.append(gini)
+
+        return ginis
+
+    def ginis2(self):
+        ginis = []
+        for hedge in [node for node, attr in self.G.nodes(data=True) if attr["type"] == self.hyperedge_type]:
+            nodes = self.G[hedge]
+
+            if len(nodes) == 0:
+                continue
+
+            coms = [self.G.nodes[n]["community"] for n in nodes]
+
+            # Avoid division by 0 later
+            coms = sorted([com + 1 for com in coms])
+            count = Counter(coms)
+
+            t0 = 0
+            t1 = 0
+
+            for i, com in enumerate(coms):
+                t0 += (i + 1) * com
+                t1 += com
+
+            gini = (2 * t0) / (len(nodes) * t1)
+            gini = gini - (len(nodes) + 1) / len(nodes)
+
+            ginis.append(gini)
+
+        return ginis
+
+
     def mixed_he_fraction_to_count(self):
         edges_composition = self.hyperedges_composition()
         fraction_to_count = defaultdict(int)
@@ -319,5 +388,12 @@ if __name__ == "__main__":
     # print(gen.G)
 
     nmax = gen.hyperedges_nmax()
-    print(nmax)
+    # print(nmax)
+
+    gen = Generator(80, 40, 2, 0.10, 0.05, None, "weighted")
+    gen.run()
+    ginis = gen.ginis()
+    # ginis = gen.ginis2()
+    print(ginis)
+
 

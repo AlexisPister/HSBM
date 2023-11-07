@@ -1,4 +1,3 @@
-import numpy as np
 import networkx as nx
 import random
 import json
@@ -233,6 +232,42 @@ class Generator:
             values.append(value)
         return values
 
+
+    def ginis(self):
+        ginis = []
+        for hedge in [node for node, attr in self.G.nodes(data=True) if attr["type"] == self.hyperedge_type]:
+            nodes = self.G[hedge]
+            
+#             TODO: for now, remove empty hes
+            if len(nodes) == 0:
+                continue 
+            
+            coms = [self.G.nodes[n]["community"] for n in nodes]
+            count = Counter(coms)
+
+            # print(count)
+
+            gini = 0
+            for i, (n_com, count_value) in enumerate(count.items()):
+                for j, (n_com2, count_value2) in enumerate(count.items()):
+                    if j > i:
+                        gini += abs(count_value - count_value2)
+
+            xbar = 0
+            for nc in count.values():
+                # xbar += nc / self.n_coms
+                xbar += nc / len(nodes)
+                
+
+            # gini = gini * (1 / (2 * (self.n_coms ** 2) * xbar))
+            gini = gini * (1 / (2 * (len(nodes) ** 2) * xbar))
+            
+            ginis.append(gini)
+            print(coms, gini)
+
+        return ginis
+        
+
     def mixed_he_fraction_to_count(self):
         edges_composition = self.hyperedges_composition()
         fraction_to_count = defaultdict(int)
@@ -319,5 +354,11 @@ if __name__ == "__main__":
     # print(gen.G)
 
     nmax = gen.hyperedges_nmax()
-    print(nmax)
+    # print(nmax)
+
+    gen = Generator(100, 20, 2, 0.20, 0.02, None, "weighted")
+    gen.run()
+    ginis = gen.ginis()
+    print(ginis)
+
 
