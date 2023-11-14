@@ -126,8 +126,12 @@ class Generator:
             self.add_node_firstproba(node, hyperedge)
         elif self.sampling_start == "weighted":
             self.add_weighted_proba(node, hyperedge)
+        elif self.sampling_start == "frequent":
+            self.add_node_mostfrequent_proba(node, hyperedge)
         elif self.sampling_start == "max":
-            self.add_node_maxproba(node, hyperedge)
+            self.add_node_max_proba(node, hyperedge)
+        elif self.sampling_start == "min":
+            self.add_node_min_proba(node, hyperedge)
 
     def add_node_firstproba(self, node, hyperedge):
         com1 = self.community_array[node]
@@ -153,7 +157,7 @@ class Generator:
         if roll < weighted_proba:
             hyperedge.append(node)
 
-    def add_node_maxproba(self, node, hyperedge):
+    def add_node_mostfrequent_proba(self, node, hyperedge):
         def most_frequent(List):
             return max(set(List), key=List.count)
 
@@ -162,6 +166,34 @@ class Generator:
         most_frequent_com = most_frequent(current_coms)
 
         p = self.p_edge_intra if com == most_frequent_com else self.p_edge_inter
+        roll = random.random()
+        if roll < p:
+            hyperedge.append(node)
+
+    def add_node_max_proba(self, node, hyperedge):
+        com = self.community_array[node]
+        current_coms = [self.community_array[n] for n in hyperedge]
+
+        same_com_present = False
+        for com2 in current_coms:
+            if com2 == com:
+                same_com_present = True
+
+        p = self.p_edge_intra if same_com_present else self.p_edge_inter
+        roll = random.random()
+        if roll < p:
+            hyperedge.append(node)
+
+    def add_node_min_proba(self, node, hyperedge):
+        com = self.community_array[node]
+        current_coms = [self.community_array[n] for n in hyperedge]
+
+        other_com_present = False
+        for com2 in current_coms:
+            if com2 != com:
+                other_com_present = True
+
+        p = self.p_edge_inter if other_com_present else self.p_edge_intra
         roll = random.random()
         if roll < p:
             hyperedge.append(node)
@@ -182,7 +214,7 @@ class Generator:
                     hyperedge_created = True
 
                 if hyperedge_size == 3:
-                    break;
+                    break
 
         return hyperedge_created
 
